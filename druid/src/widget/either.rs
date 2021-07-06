@@ -74,7 +74,9 @@ impl<T: Data> Widget<T> for Either<T> {
     fn update(&mut self, ctx: &mut UpdateCtx, _old_data: &T, data: &T, env: &Env) {
         let current = (self.closure)(data, env);
         if current != self.current {
+            let must_release_focus = self.current_widget().has_focus();
             self.current = current;
+            if must_release_focus {}
             ctx.request_layout();
         }
         self.current_widget().update(ctx, data, env)

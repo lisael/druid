@@ -473,6 +473,7 @@ impl<T: TextStorage + EditableText> Widget<T> for TextBox<T> {
                 ctx.register_for_focus();
             }
             LifeCycle::FocusChanged(true) => {
+                eprintln!("get focus");
                 if self.text().can_write() && !self.multiline && !self.was_focused_from_click {
                     let selection = Selection::new(0, data.len());
                     let _ = self.text_mut().borrow_mut().set_selection(selection);
@@ -484,6 +485,7 @@ impl<T: TextStorage + EditableText> Widget<T> for TextBox<T> {
                 ctx.request_paint();
             }
             LifeCycle::FocusChanged(false) => {
+                eprintln!("lose focus");
                 if self.text().can_write() && MAC_OR_LINUX && !self.multiline {
                     let selection = self.text().borrow().selection();
                     let selection = Selection::new(selection.active, selection.active);
