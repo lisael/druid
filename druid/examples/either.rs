@@ -1,47 +1,75 @@
-// Copyright 2019 The Druid Authors.
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
-//! An example using the Either widget to show/hide a slider.
-//! This is a very simple example, it uses a bool to determine
-//! which widget gets shown.
-
 use druid::widget::prelude::*;
-use druid::widget::{Checkbox, Either, Flex, Label, Slider};
-use druid::{AppLauncher, Data, Lens, WidgetExt, WindowDesc};
+use druid::widget::{Checkbox, Either, Flex, Label, TextBox};
+use druid::{AppLauncher, Data, Lens, Widget, WidgetExt, WindowDesc};
 
 #[derive(Clone, Default, Data, Lens)]
 struct AppState {
-    which: bool,
-    value: f64,
+    data1: String,
+    edit1: bool,
+    data2: String,
+    edit2: bool,
+}
+
+struct Observer<T> {
+    inner: Box<dyn Widget<T>>,
+}
+
+impl<T> Widget<T> for Observer<T> {
+    fn event(&mut self, ctx: &mut EventCtx, event: &Event, data: &mut T, env: &Env) {
+        if let Event::Internal(_) = event {
+            eprintln!("{:?}", event);
+        }
+        self.inner.event(ctx, event, data, env)
+    }
+
+    fn lifecycle(&mut self, ctx: &mut LifeCycleCtx, event: &LifeCycle, data: &T, env: &Env) {
+        eprintln!("{:?}", event);
+        self.inner.lifecycle(ctx, event, data, env)
+    }
+
+    fn update(&mut self, ctx: &mut UpdateCtx, old_data: &T, data: &T, env: &Env) {
+        self.inner.update(ctx, old_data, data, env)
+    }
+
+    fn layout(&mut self, ctx: &mut LayoutCtx, bc: &BoxConstraints, data: &T, env: &Env) -> Size {
+        self.inner.layout(ctx, bc, data, env)
+    }
+
+    fn paint(&mut self, ctx: &mut PaintCtx, data: &T, env: &Env) {
+        self.inner.paint(ctx, data, env)
+    }
+}
+
+impl<T> Observer<T> {
+    fn new<W>(inner: W) -> Self
+    where
+        W: Widget<T> + 'static,
+    {
+        Self {
+            inner: Box::new(inner),
+        }
+    }
 }
 
 fn ui_builder() -> impl Widget<AppState> {
-    // Our UI consists of a column with a button and an `Either` widget
-    let button = Checkbox::new("Toggle slider")
-        .lens(AppState::which)
-        .padding(5.0);
+    let button1 = Checkbox::new("Edit 1").lens(AppState::edit1).padding(5.0);
+    let button2 = Checkbox::new("Edit 2").lens(AppState::edit2).padding(5.0);
 
-    // The `Either` widget has two children, only one of which is visible at a time.
-    // To determine which child is visible, you pass it a closure that takes the
-    // `Data` and the `Env` and returns a bool; if it returns `true`, the first
-    // widget will be visible, and if `false`, the second.
-    let either = Either::new(
-        |data, _env| data.which,
-        Slider::new().lens(AppState::value).padding(5.0),
-        Label::new("Click to reveal slider").padding(5.0),
+    let either1 = Either::new(
+        |state, _env| state.edit1,
+        TextBox::new().lens(AppState::data1),
+        Label::dynamic(|state: &AppState, _env| state.data1.clone()).padding(5.0),
     );
-    Flex::column().with_child(button).with_child(either)
+    let either2 = Either::new(
+        |state, _env| state.edit2,
+        TextBox::new().lens(AppState::data2),
+        Label::dynamic(|state: &AppState, _env| state.data2.clone()).padding(5.0),
+    );
+    Flex::column()
+        .with_child(button1)
+        .with_child(button2)
+        .with_child(Observer::new(either1))
+        .with_child(Observer::new(either2))
 }
 
 pub fn main() {
